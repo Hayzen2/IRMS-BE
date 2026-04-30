@@ -1,0 +1,15 @@
+SERVER_PORT=your_server_port (I used 8080)
+
+POSTGRES_USER=your_postgres_user
+POSTGRES_PASSWORD=your_postgres_password
+POSTGRES_DB=your_postgres_db
+POSTGRES_HOST=your_postgres_host
+POSTGRES_PORT=your_postgres_port
+
+PGADMIN_EMAIL=your_pgadmin_email
+PGADMIN_PASSWORD=your_pgadmin_password
+PGADMIN_PORT=5050
+
+FRONTEND_URL=your_frontend_url
+
+JWT_SECRET=your_jwt_secret_key

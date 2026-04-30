@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: IRMS
+  server:
+    port: ${SERVER_PORT:8080}
+  cors:
+    allowed-origins:
+      - ${FRONTEND_URL}
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+    allowed-headers:
+      - "*"
+    exposed-headers:
+      - Authorization
+      - Content-Type
+    allow-credentials: true
+    max-age: 3600
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    defer-datasource-initialization: true #Ensures DB is ready before JPA runs
+    hibernate:
+      ddl-auto: update #auto create and update table
+    show-sql: true #Logs SQL queries to console
+jwt:
+  secret: ${JWT_SECRET}
+  access:
+    expiration: 604800000 # 7 days
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    disable-swagger-default-url: true
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  show-actuator: false
