@@ -14,6 +14,8 @@ import com.example.IRMS.modules.digital_ordering.enums.OrderStatus;
 import com.example.IRMS.modules.digital_ordering.models.OrderEntity;
 import com.example.IRMS.modules.digital_ordering.models.OrderItemEntity;
 import com.example.IRMS.modules.digital_ordering.repositories.OrderRepository;
+import com.example.IRMS.modules.kitchen_coordination.dtos.OrderResponseDto;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -31,22 +33,58 @@ public class OrderTrackingService {
 
 	// notify KDS of new order for real-time update
 	public void notifyNewOrder(OrderEntity order) {
-		messagingTemplate.convertAndSend("/topic/kds/new-order", order);
+		OrderResponseDto payload = OrderResponseDto.fromEntity(order);
+		messagingTemplate.convertAndSend("/topic/kds/new-order", payload);
+		messagingTemplate.convertAndSend("/topic/orders/new-order", payload);
+	}
+
+	// notify KDS of order status update for real-time update
+	public void notifyOrderReady(OrderEntity order) {
+		OrderResponseDto payload = OrderResponseDto.fromEntity(order);
+		messagingTemplate.convertAndSend("/topic/kds/order-ready", payload);
+		messagingTemplate.convertAndSend("/topic/orders/order-ready", payload);
+	}
+
+	// notify KDS of order status cooking for real-time update
+	public void notifyOrderCooking(OrderEntity order) {
+		OrderResponseDto payload = OrderResponseDto.fromEntity(order);
+		messagingTemplate.convertAndSend("/topic/kds/order-cooking", payload);
+		messagingTemplate.convertAndSend("/topic/orders/order-cooking", payload);
+	}
+
+	// notify KDS of any order update (useful for per-item ready/cancel updates)
+	public void notifyOrderUpdated(OrderEntity order) {
+		OrderResponseDto payload = OrderResponseDto.fromEntity(order);
+		messagingTemplate.convertAndSend("/topic/kds/order-updated", payload);
+		messagingTemplate.convertAndSend("/topic/orders/order-updated", payload);
 	}
 
 	// notify KDS of order status update for real-time update
 	public void notifyOrderCompletion(OrderEntity order) {
-		messagingTemplate.convertAndSend("/topic/kds/order-completed", order);
+		OrderResponseDto payload = OrderResponseDto.fromEntity(order);
+		messagingTemplate.convertAndSend("/topic/kds/order-completed", payload);
+		messagingTemplate.convertAndSend("/topic/orders/order-completed", payload);
 	}
 
 	// notify KDS of order near deadline for real-time update
 	public void notifyOrderNearDeadline(OrderEntity order) {
-		messagingTemplate.convertAndSend("/topic/kds/order-near-deadline", order);
+		OrderResponseDto payload = OrderResponseDto.fromEntity(order);
+		messagingTemplate.convertAndSend("/topic/kds/order-near-deadline", payload);
+		messagingTemplate.convertAndSend("/topic/orders/order-near-deadline", payload);
+	}
+
+	// notify KDS of order overdue for real-time update
+	public void notifyOrderOverdue(OrderEntity order) {
+		OrderResponseDto payload = OrderResponseDto.fromEntity(order);
+		messagingTemplate.convertAndSend("/topic/kds/order-overdue", payload);
+		messagingTemplate.convertAndSend("/topic/orders/order-overdue", payload);
 	}
 
 	// notify KDS of order cancellation for real-time update
 	public void notifyOrderCanceled(OrderEntity order) {
-		messagingTemplate.convertAndSend("/topic/kds/order-canceled", order);
+		OrderResponseDto payload = OrderResponseDto.fromEntity(order);
+		messagingTemplate.convertAndSend("/topic/kds/order-canceled", payload);
+		messagingTemplate.convertAndSend("/topic/orders/order-canceled", payload);
 	}
 
 	// cancel an entire order
@@ -54,6 +92,11 @@ public class OrderTrackingService {
 	public OrderEntity markOrderCanceled(Long orderId) {
 		OrderEntity order = findOrder(orderId);
 		order.setStatus(OrderStatus.CANCELED);
+		order.setCompletedAt(LocalDateTime.now());
+		if (order.getOrderTime() != null) {
+			long actualMinutes = Duration.between(order.getOrderTime(), order.getCompletedAt()).toMinutes();
+			order.setActualPrepMinutes((int) Math.max(actualMinutes, 0));
+		}
 		for (OrderItemEntity item : order.getItems()) {
 			if (item.getProgressStatus() != OrderItemProgressStatus.COMPLETED) {
 				item.setProgressStatus(OrderItemProgressStatus.CANCELED);
@@ -62,6 +105,19 @@ public class OrderTrackingService {
 		OrderEntity saved = orderRepository.save(order);
 		notifyOrderCanceled(saved);
 		return saved;
+	}
+
+	@Transactional
+	public OrderEntity markOrderCooking(Long orderId) {
+		OrderEntity order = findOrder(orderId);
+		if (order.getStatus() == OrderStatus.PENDING) {
+			order.setStatus(OrderStatus.COOKING);
+			OrderEntity saved = orderRepository.save(order);
+			notifyOrderCooking(saved);
+			return saved;
+		} else {
+			throw new IllegalStateException("Only pending orders can be marked cooking");
+		}
 	}
 
 	// start making an item, update order status to COOKING
@@ -83,7 +139,10 @@ public class OrderTrackingService {
 
 		item.setProgressStatus(OrderItemProgressStatus.COOKING);
 		order.setStatus(OrderStatus.COOKING);
-		return orderRepository.save(order);
+		OrderEntity saved = orderRepository.save(order);
+		// notify that order has entered cooking for UI update using persisted state
+		notifyOrderCooking(saved);
+		return saved;
 	}
 
 	// mark an item as ready
@@ -98,8 +157,19 @@ public class OrderTrackingService {
 		}
 
 		item.setProgressStatus(OrderItemProgressStatus.READY);
+		// always surface an order-updated event so clients can refresh per-item state
 		order.setStatus(OrderStatus.COOKING);
-		return orderRepository.save(order);
+		if (allItemsReady(order)) {
+			order.setStatus(OrderStatus.READY);
+		}
+		OrderEntity saved = orderRepository.save(order);
+		// notify clients about the per-item update first
+		notifyOrderUpdated(saved);
+		if (saved.getStatus() == OrderStatus.READY) {
+			// send full-ready notification as well
+			notifyOrderReady(saved);
+		}
+		return saved;
 	}
 
 	// mark an item as canceled
@@ -115,9 +185,12 @@ public class OrderTrackingService {
 		item.setProgressStatus(OrderItemProgressStatus.CANCELED);
 		if (allItemsCanceled(order)) {
 			order.setStatus(OrderStatus.CANCELED);
-			notifyOrderCanceled(order);
 		}
-		return orderRepository.save(order);
+		OrderEntity saved = orderRepository.save(order);
+		if (saved.getStatus() == OrderStatus.CANCELED) {
+			notifyOrderCanceled(saved);
+		}
+		return saved;
 	}
 
 	// complete an item, update order status to COMPLETED if all items are done
@@ -173,6 +246,19 @@ public class OrderTrackingService {
 				continue;
 			}
 			if (item.getProgressStatus() != OrderItemProgressStatus.COMPLETED) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// check if all items in an order are ready (ignoring canceled items)
+	private boolean allItemsReady(OrderEntity order) {
+		for (OrderItemEntity item : order.getItems()) {
+			if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED) {
+				continue;
+			}
+			if (item.getProgressStatus() != OrderItemProgressStatus.READY) {
 				return false;
 			}
 		}

@@ -34,6 +34,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         .setAllowedOriginPatterns("*") // Allow all origins for CORS 
         // Fallback options for browsers that don’t support WebSockets (long polling or HTTP streaming)
         .withSockJS();
+
+        // Native WebSocket endpoint for browser clients that do not need SockJS fallbacks.
+        registry.addEndpoint("/ws-native")
+        .setAllowedOriginPatterns("*");
     }
 
     // Principal is a functional interface with a single method: String getName();
