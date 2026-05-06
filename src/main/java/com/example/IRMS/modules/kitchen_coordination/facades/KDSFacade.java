@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 
 import com.example.IRMS.modules.digital_ordering.models.OrderEntity;
 import com.example.IRMS.modules.kitchen_coordination.dtos.KdsAlertDto;
-import com.example.IRMS.modules.kitchen_coordination.dtos.KdsQueueItemDto;
 import com.example.IRMS.modules.kitchen_coordination.enums.OrderSortBy;
 import com.example.IRMS.modules.kitchen_coordination.enums.SortDirection;
 import com.example.IRMS.modules.kitchen_coordination.services.KitchenQueueService;
@@ -20,9 +19,9 @@ public class KDSFacade {
     private final KitchenQueueService kitchenQueueService;
     private final OrderTrackingService orderTrackingService;
 
-    // get queue with custom sorting
-    public List<KdsQueueItemDto> getQueue(OrderSortBy sortBy, SortDirection direction) {
-        return kitchenQueueService.getQueue(sortBy, direction);
+    // get queue with custom sorting - returns full OrderEntity objects
+    public List<OrderEntity> getQueue(OrderSortBy sortBy, SortDirection direction) {
+        return kitchenQueueService.getOrderQueue(sortBy, direction);
     }
 
     public List<KdsAlertDto> getAlerts(int thresholdMinutes) {

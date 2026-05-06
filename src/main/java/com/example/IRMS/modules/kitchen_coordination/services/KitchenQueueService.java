@@ -28,6 +28,35 @@ public class KitchenQueueService {
 	private final OrderRepository orderRepository;
 	private final OrderTrackingService orderTrackingService;
 
+	// get order queue with flexible sorting - returns full OrderEntity objects with all details
+	public List<OrderEntity> getOrderQueue(OrderSortBy sortBy, SortDirection direction) {
+		LocalDateTime now = LocalDateTime.now();
+		List<OrderEntity> queue = new ArrayList<>();
+		
+		// Filter for active orders (PENDING or COOKING)
+		for (OrderEntity order : orderRepository.findAll()) {
+			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.COOKING) {
+				continue;
+			}
+			queue.add(order);
+		}
+
+		// apply custom sorting based on sortBy parameter
+		Comparator<OrderEntity> comparator = switch (sortBy) {
+			case ORDER_TIME -> Comparator.comparing(OrderEntity::getOrderTime);
+			case ESTIMATED_PREP_TIME -> Comparator.comparing(
+				(OrderEntity order) -> getOrderEstimatedPrep(order),
+				Comparator.nullsLast(Integer::compareTo));
+		};
+
+		if (direction == SortDirection.DESC) {
+			comparator = comparator.reversed();
+		}
+
+		queue.sort(comparator);
+		return queue;
+	}
+
 	// get order queue with flexible sorting and KDS display data (timing, category, station)
 	// defaults to sort by estimated prep time, then dish category, then station
 	public List<KdsQueueItemDto> getQueue(OrderSortBy sortBy, SortDirection direction) {
