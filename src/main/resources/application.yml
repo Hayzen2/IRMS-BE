@@ -19,14 +19,20 @@ spring:
     allow-credentials: true
     max-age: 3600
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
   jpa:
     defer-datasource-initialization: true #Ensures DB is ready before JPA runs
     hibernate:
       ddl-auto: update #auto create and update table
+      dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true #Logs SQL queries to console
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      hibernate.jdbc.batch_size: 20
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
 jwt:
   secret: ${JWT_SECRET}
   access:
