@@ -5,12 +5,14 @@ spring:
     port: ${SERVER_PORT:8080}
   cors:
     allowed-origins:
-      - ${FRONTEND_URL}
+      - ${FRONTEND_URL:http://localhost:5173}
     allowed-methods:
       - GET
       - POST
       - PUT
+      - PATCH
       - DELETE
+      - OPTIONS
     allowed-headers:
       - "*"
     exposed-headers:

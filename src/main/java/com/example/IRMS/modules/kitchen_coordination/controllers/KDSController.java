@@ -1,6 +1,7 @@
 package com.example.IRMS.modules.kitchen_coordination.controllers;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.IRMS.modules.digital_ordering.models.OrderEntity;
 import com.example.IRMS.modules.kitchen_coordination.dtos.KdsAlertDto;
-import com.example.IRMS.modules.kitchen_coordination.dtos.KdsQueueItemDto;
+import com.example.IRMS.modules.kitchen_coordination.dtos.OrderResponseDto;
 import com.example.IRMS.modules.kitchen_coordination.enums.OrderSortBy;
 import com.example.IRMS.modules.kitchen_coordination.enums.SortDirection;
 import com.example.IRMS.modules.kitchen_coordination.facades.KDSFacade;
@@ -28,13 +29,17 @@ import lombok.RequiredArgsConstructor;
 public class KDSController {
 	private final KDSFacade kdsFacade;
 
-	@Operation(summary = "Get KDS order queue", description = "Returns active orders in the kitchen queue with order-level timing and deadline details")
+	@Operation(summary = "Get KDS order queue", description = "Returns active orders in the kitchen queue with all details including items")
 	@GetMapping("/queue")
 	@PreAuthorize("hasAnyAuthority('PERM_VIEW_KDS')")
-	public ResponseEntity<ApiResponse<List<KdsQueueItemDto>>> getQueue( 
+	public ResponseEntity<ApiResponse<List<OrderResponseDto>>> getQueue( 
 			@RequestParam(defaultValue = "ESTIMATED_PREP_TIME") OrderSortBy sortBy,
 			@RequestParam(defaultValue = "ASC") SortDirection direction) {
-		return ResponseEntity.ok(new ApiResponse<>(200, "KDS order queue fetched", kdsFacade.getQueue(sortBy, direction)));
+		List<OrderEntity> orders = kdsFacade.getQueue(sortBy, direction);
+		List<OrderResponseDto> dtos = orders.stream()
+			.map(OrderResponseDto::fromEntity)
+			.collect(Collectors.toList());
+		return ResponseEntity.ok(new ApiResponse<>(200, "KDS order queue fetched", dtos));
 	}
 
 	@Operation(summary = "Get KDS deadline alerts", description = "Returns order-level alerts for orders that are approaching their computed deadline")
