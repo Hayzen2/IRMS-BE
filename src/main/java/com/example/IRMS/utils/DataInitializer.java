@@ -97,7 +97,98 @@ public class DataInitializer implements CommandLineRunner{
         drink.setDescription("Refreshing handmade lemonade with a hint of mint.");
         drink.setStations(java.util.List.of(StationType.BEVERAGE));
 
-        java.util.List<MenuItemEntity> seed = java.util.List.of(pizza1, pizza2, burger, fries, salad, cake, drink);
+        // ==========================================
+        // NEW ITEMS (Ready for R2 Images)
+        // ==========================================
+        MenuItemEntity wings = new MenuItemEntity();
+        wings.setName("Buffalo Hot Wings");
+        wings.setDishCategory(DishCategory.APPETIZER);
+        wings.setEstimatedPrepMinutes(10);
+        wings.setPrice(85000);
+        wings.setAvailable(true);
+        wings.setDescription("Crispy fried chicken wings tossed in a spicy buffalo sauce.");
+        wings.setStations(java.util.List.of(StationType.FRYER));
+        wings.setImageUrl(null); // Explicitly null until R2 upload
+
+        MenuItemEntity garlicBread = new MenuItemEntity();
+        garlicBread.setName("Cheesy Garlic Bread");
+        garlicBread.setDishCategory(DishCategory.APPETIZER);
+        garlicBread.setEstimatedPrepMinutes(5);
+        garlicBread.setPrice(45000);
+        garlicBread.setAvailable(true);
+        garlicBread.setDescription("Toasted baguette slices with garlic butter and melted mozzarella.");
+        garlicBread.setStations(java.util.List.of(StationType.GENERAL));
+        garlicBread.setImageUrl(null);
+
+        MenuItemEntity steak = new MenuItemEntity();
+        steak.setName("Grilled Ribeye Steak");
+        steak.setDishCategory(DishCategory.MAIN_COURSE);
+        steak.setEstimatedPrepMinutes(15);
+        steak.setPrice(350000);
+        steak.setAvailable(true);
+        steak.setDescription("Premium 250g ribeye steak grilled to your liking, served with mashed potatoes.");
+        steak.setStations(java.util.List.of(StationType.GRILL));
+
+        MenuItemEntity pasta = new MenuItemEntity();
+        pasta.setName("Seafood Linguine");
+        pasta.setDishCategory(DishCategory.MAIN_COURSE);
+        pasta.setEstimatedPrepMinutes(12);
+        pasta.setPrice(150000);
+        pasta.setAvailable(true);
+        pasta.setDescription("Linguine tossed with fresh shrimp, squid, and a rich tomato basil sauce.");
+        pasta.setStations(java.util.List.of(StationType.GENERAL));
+
+        MenuItemEntity salmon = new MenuItemEntity();
+        salmon.setName("Pan-Seared Salmon");
+        salmon.setDishCategory(DishCategory.MAIN_COURSE);
+        salmon.setEstimatedPrepMinutes(14);
+        salmon.setPrice(220000);
+        salmon.setAvailable(true);
+        salmon.setDescription("Fresh Norwegian salmon fillet with a lemon butter glaze and asparagus.");
+        salmon.setStations(java.util.List.of(StationType.GRILL));
+
+        MenuItemEntity makima = new MenuItemEntity();
+        makima.setName("Makima");
+        makima.setDishCategory(DishCategory.MAIN_COURSE);
+        makima.setEstimatedPrepMinutes(30);
+        makima.setPrice(1000000);
+        makima.setAvailable(true);
+        makima.setDescription("Chainsaw's special.");
+        makima.setStations(java.util.List.of(StationType.GRILL));
+
+        MenuItemEntity cheesecake = new MenuItemEntity();
+        cheesecake.setName("New York Cheesecake");
+        cheesecake.setDishCategory(DishCategory.DESSERT);
+        cheesecake.setEstimatedPrepMinutes(3); // Fast prep, just plating
+        cheesecake.setPrice(65000);
+        cheesecake.setAvailable(true);
+        cheesecake.setDescription("Classic creamy cheesecake with a graham cracker crust and berry compote.");
+        cheesecake.setStations(java.util.List.of(StationType.DESSERT));
+
+        MenuItemEntity coffee = new MenuItemEntity();
+        coffee.setName("Iced Caramel Macchiato");
+        coffee.setDishCategory(DishCategory.BEVERAGE);
+        coffee.setEstimatedPrepMinutes(4);
+        coffee.setPrice(55000);
+        coffee.setAvailable(true);
+        coffee.setDescription("Rich espresso poured over cold milk, ice, and caramel syrup.");
+        coffee.setStations(java.util.List.of(StationType.BEVERAGE));
+
+        MenuItemEntity beer = new MenuItemEntity();
+        beer.setName("Local Craft IPA");
+        beer.setDishCategory(DishCategory.BEVERAGE);
+        beer.setEstimatedPrepMinutes(1);
+        beer.setPrice(75000);
+        beer.setAvailable(true);
+        beer.setDescription("Refreshing India Pale Ale with citrus and pine notes.");
+        beer.setStations(java.util.List.of(StationType.BEVERAGE));
+
+        // Group them all up and save
+        java.util.List<MenuItemEntity> seed = java.util.List.of(
+            pizza1, pizza2, burger, fries, salad, cake, drink, 
+            wings, garlicBread, steak, pasta, salmon, makima, cheesecake, coffee, beer
+        );
+        
         menuRepository.saveAll(seed);
     }
 

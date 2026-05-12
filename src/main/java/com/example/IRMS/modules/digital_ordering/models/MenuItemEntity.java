@@ -39,4 +39,8 @@ public class MenuItemEntity {
     @Column(nullable=false)
     private boolean isAvailable;
     private String description;
+
+    // MenuItemEntity.java
+    @Column(name = "image_url")
+    private String imageUrl;
 }

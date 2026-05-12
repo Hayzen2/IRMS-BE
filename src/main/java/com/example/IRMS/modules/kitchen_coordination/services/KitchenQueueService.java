@@ -33,9 +33,9 @@ public class KitchenQueueService {
 		LocalDateTime now = LocalDateTime.now();
 		List<OrderEntity> queue = new ArrayList<>();
 		
-		// Filter for active orders (PENDING or COOKING)
+		// Filter for active orders (PENDING or IN_PROGRESS)
 		for (OrderEntity order : orderRepository.findAll()) {
-			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.COOKING) {
+			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.IN_PROGRESS) {
 				continue;
 			}
 			queue.add(order);
@@ -63,7 +63,7 @@ public class KitchenQueueService {
 		LocalDateTime now = LocalDateTime.now();
 		List<KdsQueueItemDto> queue = new ArrayList<>();
 		for (OrderEntity order : orderRepository.findAll()) {
-			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.COOKING) {
+			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.IN_PROGRESS) {
 				continue;
 			}
 			queue.add(toQueueDto(order, now));
@@ -96,7 +96,7 @@ public class KitchenQueueService {
 		List<KdsAlertDto> alerts = new ArrayList<>();
 
 		for (OrderEntity order : orderRepository.findAll()) {
-			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.COOKING) {
+			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.IN_PROGRESS) {
 				continue;
 			}
 

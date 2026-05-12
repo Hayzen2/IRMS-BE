@@ -59,6 +59,7 @@ public class OrderProcessingService {
 		
 		order.setOrderTime(LocalDateTime.now());
 		order.setStatus(OrderStatus.PENDING);
+    order.setTableId(request.getTableId());
 		List<OrderItemEntity> orderItems = new ArrayList<>();
 		for (CreateOrderItemRequest itemRequest : request.getItems()) {
 			MenuItemEntity menuItem = menuRepository.findById(itemRequest.getMenuItemId())

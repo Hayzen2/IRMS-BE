@@ -49,6 +49,11 @@ public class OrderTrackingService {
 		messagingTemplate.convertAndSend("/topic/kds/order-canceled", order);
 	}
 
+	// notify KDS of order started (in progress) for real-time update
+	public void notifyOrderStarted(OrderEntity order) {
+		messagingTemplate.convertAndSend("/topic/kds/order-started", order);
+	}
+
 	// cancel an entire order
 	@Transactional
 	public OrderEntity markOrderCanceled(Long orderId) {
@@ -82,8 +87,10 @@ public class OrderTrackingService {
 		}
 
 		item.setProgressStatus(OrderItemProgressStatus.COOKING);
-		order.setStatus(OrderStatus.COOKING);
-		return orderRepository.save(order);
+		order.setStatus(OrderStatus.IN_PROGRESS);
+		OrderEntity saved = orderRepository.save(order);
+		notifyOrderStarted(saved);
+		return saved;
 	}
 
 	// mark an item as ready
@@ -98,7 +105,7 @@ public class OrderTrackingService {
 		}
 
 		item.setProgressStatus(OrderItemProgressStatus.READY);
-		order.setStatus(OrderStatus.COOKING);
+		order.setStatus(OrderStatus.IN_PROGRESS);
 		return orderRepository.save(order);
 	}
 

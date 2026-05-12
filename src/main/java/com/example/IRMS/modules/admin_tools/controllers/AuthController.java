@@ -39,7 +39,17 @@ public class AuthController {
 			response.addHeader("Set-Cookie", 
 				"access_token=" + token.getAccessToken() + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=" + (86400) + "; ");
 			// Return user profile only (no token in body)
-			return ResponseEntity.ok(token);
+			// return ResponseEntity.ok(token);
+
+      AuthTokenDTO safeResponse = new AuthTokenDTO(
+        null, // Strip the access token!
+        token.getTokenType(), 
+        token.getUserId(), 
+        token.getEmail(), 
+        token.getRole()
+      );
+
+      return ResponseEntity.ok(safeResponse);
 		} catch (BadCredentialsException ex) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 				.body(new AuthTokenDTO(null, null, null, null, null));

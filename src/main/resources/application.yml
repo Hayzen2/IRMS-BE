@@ -27,7 +27,7 @@ spring:
   jpa:
     defer-datasource-initialization: true #Ensures DB is ready before JPA runs
     hibernate:
-      ddl-auto: update #auto create and update table
+      ddl-auto: create #auto create and update table
       dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true #Logs SQL queries to console
     properties:
