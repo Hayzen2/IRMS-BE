@@ -36,7 +36,7 @@ public class MenuController {
 
     @Operation(summary = "Get all menu items", description = "Returns all menu items, with optional filtering by availability")
     @GetMapping("/all")
-    @PreAuthorize("hasAnyAuthority('PERM_TAKE_ORDER', 'PERM_UPDATE_MENU')")
+    @PreAuthorize("hasAnyAuthority('PERM_TAKE_ORDER', 'PERM_UPDATE_MENU', 'PERM_VIEW_MENU')")
     public ResponseEntity<ApiResponse<List<MenuItemEntity>>> getAllMenuItems(
             @RequestParam(defaultValue = "false") boolean availableOnly) {
             List<MenuItemEntity> data = menuManagerService.getAllMenuItems(availableOnly);

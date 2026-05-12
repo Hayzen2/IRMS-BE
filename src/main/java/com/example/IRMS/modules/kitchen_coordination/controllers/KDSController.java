@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,9 +33,10 @@ public class KDSController {
 	@Operation(summary = "Get KDS order queue", description = "Returns active orders in the kitchen queue with all details including items")
 	@GetMapping("/queue")
 	@PreAuthorize("hasAnyAuthority('PERM_VIEW_KDS')")
+	@Transactional(readOnly = true)
 	public ResponseEntity<ApiResponse<List<OrderResponseDto>>> getQueue( 
-			@RequestParam(defaultValue = "ESTIMATED_PREP_TIME") OrderSortBy sortBy,
-			@RequestParam(defaultValue = "ASC") SortDirection direction) {
+			@RequestParam(defaultValue = "ORDER_TIME") OrderSortBy sortBy,
+			@RequestParam(defaultValue = "DESC") SortDirection direction) {
 		List<OrderEntity> orders = kdsFacade.getQueue(sortBy, direction);
 		List<OrderResponseDto> dtos = orders.stream()
 			.map(OrderResponseDto::fromEntity)
@@ -59,6 +61,18 @@ public class KDSController {
 		try {
 			OrderEntity updated = kdsFacade.startItem(orderId, itemId);
 			return ResponseEntity.ok(new ApiResponse<>(200, "Order item started", updated));
+		} catch (IllegalStateException ex) {
+			return ResponseEntity.status(400).body(new ApiResponse<>(400, ex.getMessage(), null));
+		}
+	}
+
+	@Operation(summary = "Mark order cooking", description = "Marks the whole order as cooking when at least one item is cooking. For display only, does not affect item-level status")
+	@PatchMapping("/orders/{orderId}/mark-cooking")
+	@PreAuthorize("hasAnyAuthority('PERM_UPDATE_ORDER_PROGRESS')")
+	public ResponseEntity<ApiResponse<OrderEntity>> markOrderCooking(@PathVariable Long orderId) {
+		try {
+			OrderEntity updated = kdsFacade.markOrderCooking(orderId);
+			return ResponseEntity.ok(new ApiResponse<>(200, "Order marked cooking", updated));
 		} catch (IllegalStateException ex) {
 			return ResponseEntity.status(400).body(new ApiResponse<>(400, ex.getMessage(), null));
 		}

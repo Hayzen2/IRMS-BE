@@ -43,4 +43,8 @@ public class KDSFacade {
     public OrderEntity completeItem(Long orderId, Long itemId) {
         return orderTrackingService.completeItem(orderId, itemId);
     }
+
+    public OrderEntity markOrderCooking(Long orderId) {
+        return orderTrackingService.markOrderCooking(orderId);
+    }
 }

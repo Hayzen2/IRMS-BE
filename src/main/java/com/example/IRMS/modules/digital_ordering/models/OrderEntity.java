@@ -1,22 +1,23 @@
 package com.example.IRMS.modules.digital_ordering.models;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.example.IRMS.modules.admin_tools.models.UserEntity;
+import com.example.IRMS.modules.digital_ordering.enums.OrderStatus;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
-import jakarta.persistence.Table;
-import lombok.Data;
 import jakarta.persistence.Id;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.CascadeType;
-
-import com.example.IRMS.modules.admin_tools.models.UserEntity;
-import com.example.IRMS.modules.digital_ordering.enums.OrderStatus;
+import jakarta.persistence.Table;
+import lombok.Data;
 
 @Entity
 @Table(name = "orders")
@@ -35,6 +36,7 @@ public class OrderEntity {
     private LocalDateTime completedAt;
     private Integer actualPrepMinutes;
     private boolean nearDeadlineNotified;
+    private boolean overdueNotified;
 
     // Assuming one order can have multiple items
     // CascadeType.ALL so when an OrderEntity is saved, its associated OrderItem are also saved

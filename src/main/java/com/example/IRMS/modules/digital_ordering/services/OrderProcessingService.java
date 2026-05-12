@@ -2,8 +2,8 @@ package com.example.IRMS.modules.digital_ordering.services;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
@@ -40,6 +40,10 @@ public class OrderProcessingService {
 	public OrderEntity getOrderById(Long id) {
 		return orderRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+	}
+
+	public List<OrderEntity> getAllOrders() {
+		return orderRepository.findAll();
 	}
 
 	@Transactional
