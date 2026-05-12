@@ -123,7 +123,20 @@ public class OrderTrackingService {
 	// start making an item, update order status to COOKING
 	@Transactional
 	public OrderEntity startItem(Long orderId, Long itemId) {
-		return markItemCooking(orderId, itemId);
+		OrderEntity order = findOrder(orderId);
+		OrderItemEntity item = findItemInOrder(order, itemId);
+
+		if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED
+				|| item.getProgressStatus() == OrderItemProgressStatus.COMPLETED) {
+			throw new IllegalStateException("This item cannot be started");
+		}
+
+		item.setProgressStatus(OrderItemProgressStatus.COOKING);
+		order.setStatus(OrderStatus.COOKING);
+		OrderEntity saved = orderRepository.save(order);
+		// notify that order has entered cooking for UI update using persisted state
+		notifyOrderCooking(saved);
+		return saved;
 	}
 
 	// mark an item as cooking

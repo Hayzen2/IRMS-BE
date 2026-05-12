@@ -24,6 +24,8 @@ public class KitchenOrderNotificationScheduler {
 	private final OrderRepository orderRepository;
 	private final OrderTrackingService orderTrackingService;
 
+	// Runs every minute to check for orders approaching or past their estimated prep time and publishes alerts
+	// @Scheduled(fixedDelay = 60000) means it runs automatically every 60 seconds after the previous execution finishes
 	@Scheduled(fixedDelay = 60000)
 	@Transactional
 	public void publishKitchenAlerts() {
