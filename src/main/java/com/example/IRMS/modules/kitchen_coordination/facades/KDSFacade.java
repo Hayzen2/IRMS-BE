@@ -28,6 +28,9 @@ public class KDSFacade {
         return kitchenQueueService.getAlerts(thresholdMinutes);
     }
 
+    public OrderEntity markItemCooking(Long orderId, Long itemId) {
+        return orderTrackingService.markItemCooking(orderId, itemId);
+    }
 
     public OrderEntity markItemReady(Long orderId, Long itemId) {
         return orderTrackingService.markItemReady(orderId, itemId);
@@ -44,4 +47,6 @@ public class KDSFacade {
     public OrderEntity markOrderCooking(Long orderId) {
         return orderTrackingService.markOrderCooking(orderId);
     }
+
+    
 }
