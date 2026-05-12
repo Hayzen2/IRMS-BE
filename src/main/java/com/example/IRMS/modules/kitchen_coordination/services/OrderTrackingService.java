@@ -107,6 +107,7 @@ public class OrderTrackingService {
 		return saved;
 	}
 
+	// mark order as cooking
 	@Transactional
 	public OrderEntity markOrderCooking(Long orderId) {
 		OrderEntity order = findOrder(orderId);
@@ -118,25 +119,6 @@ public class OrderTrackingService {
 		} else {
 			throw new IllegalStateException("Only pending orders can be marked cooking");
 		}
-	}
-
-	// start making an item, update order status to COOKING
-	@Transactional
-	public OrderEntity startItem(Long orderId, Long itemId) {
-		OrderEntity order = findOrder(orderId);
-		OrderItemEntity item = findItemInOrder(order, itemId);
-
-		if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED
-				|| item.getProgressStatus() == OrderItemProgressStatus.COMPLETED) {
-			throw new IllegalStateException("This item cannot be started");
-		}
-
-		item.setProgressStatus(OrderItemProgressStatus.COOKING);
-		order.setStatus(OrderStatus.COOKING);
-		OrderEntity saved = orderRepository.save(order);
-		// notify that order has entered cooking for UI update using persisted state
-		notifyOrderCooking(saved);
-		return saved;
 	}
 
 	// mark an item as cooking
@@ -158,7 +140,7 @@ public class OrderTrackingService {
 		return saved;
 	}
 
-	// mark an item as ready
+	// mark an item as ready and update order status to READY if all items are ready
 	@Transactional
 	public OrderEntity markItemReady(Long orderId, Long itemId) {
 		OrderEntity order = findOrder(orderId);
@@ -185,7 +167,7 @@ public class OrderTrackingService {
 		return saved;
 	}
 
-	// mark an item as canceled
+	// mark an item as canceled and update order status to CANCELED if all items are canceled
 	@Transactional
 	public OrderEntity markItemCanceled(Long orderId, Long itemId) {
 		OrderEntity order = findOrder(orderId);
@@ -208,7 +190,7 @@ public class OrderTrackingService {
 
 	// complete an item, update order status to COMPLETED if all items are done
 	@Transactional
-	public OrderEntity completeItem(Long orderId, Long itemId) {
+	public OrderEntity markItemCompleted(Long orderId, Long itemId) {
 		OrderEntity order = findOrder(orderId);
 		OrderItemEntity item = findItemInOrder(order, itemId);
 

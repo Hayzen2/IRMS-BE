@@ -28,9 +28,6 @@ public class KDSFacade {
         return kitchenQueueService.getAlerts(thresholdMinutes);
     }
 
-    public OrderEntity startItem(Long orderId, Long itemId) {
-        return orderTrackingService.startItem(orderId, itemId);
-    }
 
     public OrderEntity markItemReady(Long orderId, Long itemId) {
         return orderTrackingService.markItemReady(orderId, itemId);
@@ -40,8 +37,8 @@ public class KDSFacade {
         return orderTrackingService.markItemCanceled(orderId, itemId);
     }
 
-    public OrderEntity completeItem(Long orderId, Long itemId) {
-        return orderTrackingService.completeItem(orderId, itemId);
+    public OrderEntity markItemCompleted(Long orderId, Long itemId) {
+        return orderTrackingService.markItemCompleted(orderId, itemId);
     }
 
     public OrderEntity markOrderCooking(Long orderId) {

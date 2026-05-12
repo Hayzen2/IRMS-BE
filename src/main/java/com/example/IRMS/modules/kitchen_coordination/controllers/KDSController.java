@@ -52,20 +52,6 @@ public class KDSController {
 		return ResponseEntity.ok(new ApiResponse<>(200, "KDS alerts fetched", kdsFacade.getAlerts(thresholdMinutes)));
 	}
 
-	@Operation(summary = "Start an order item", description = "Marks a dish as cooking. Required stations are read from MenuItemEntity for display only")
-	@PatchMapping("/orders/{orderId}/items/{itemId}/start")
-	@PreAuthorize("hasAnyAuthority('PERM_UPDATE_ORDER_PROGRESS')")
-	public ResponseEntity<ApiResponse<OrderEntity>> startItem(
-			@PathVariable Long orderId,
-			@PathVariable Long itemId) {
-		try {
-			OrderEntity updated = kdsFacade.startItem(orderId, itemId);
-			return ResponseEntity.ok(new ApiResponse<>(200, "Order item started", updated));
-		} catch (IllegalStateException ex) {
-			return ResponseEntity.status(400).body(new ApiResponse<>(400, ex.getMessage(), null));
-		}
-	}
-
 	@Operation(summary = "Mark order cooking", description = "Marks the whole order as cooking when at least one item is cooking. For display only, does not affect item-level status")
 	@PatchMapping("/orders/{orderId}/mark-cooking")
 	@PreAuthorize("hasAnyAuthority('PERM_UPDATE_ORDER_PROGRESS')")
@@ -113,7 +99,7 @@ public class KDSController {
 			@PathVariable Long orderId,
 			@PathVariable Long itemId) {
 		try {
-			OrderEntity updated = kdsFacade.completeItem(orderId, itemId);
+			OrderEntity updated = kdsFacade.markItemCompleted(orderId, itemId);
 			return ResponseEntity.ok(new ApiResponse<>(200, "Order item completed", updated));
 		} catch (IllegalStateException ex) {
 			return ResponseEntity.status(400).body(new ApiResponse<>(400, ex.getMessage(), null));
