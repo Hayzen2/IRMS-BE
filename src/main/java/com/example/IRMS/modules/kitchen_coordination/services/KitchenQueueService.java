@@ -8,15 +8,12 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.example.IRMS.modules.digital_ordering.enums.DishCategory;
 import com.example.IRMS.modules.digital_ordering.enums.OrderItemProgressStatus;
 import com.example.IRMS.modules.digital_ordering.enums.OrderStatus;
-import com.example.IRMS.modules.digital_ordering.enums.StationType;
 import com.example.IRMS.modules.digital_ordering.models.OrderEntity;
 import com.example.IRMS.modules.digital_ordering.models.OrderItemEntity;
 import com.example.IRMS.modules.digital_ordering.repositories.OrderRepository;
 import com.example.IRMS.modules.kitchen_coordination.dtos.KdsAlertDto;
-import com.example.IRMS.modules.kitchen_coordination.dtos.KdsQueueItemDto;
 import com.example.IRMS.modules.kitchen_coordination.enums.OrderSortBy;
 import com.example.IRMS.modules.kitchen_coordination.enums.SortDirection;
 
@@ -26,16 +23,14 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class KitchenQueueService {
 	private final OrderRepository orderRepository;
-	private final OrderTrackingService orderTrackingService;
 
 	// get order queue with flexible sorting - returns full OrderEntity objects with all details
-	public List<OrderEntity> getOrderQueue(OrderSortBy sortBy, SortDirection direction) {
-		LocalDateTime now = LocalDateTime.now();
+	public List<OrderEntity> getOrderQueue(OrderSortBy sortBy, SortDirection direction, boolean includeHistory) {
 		List<OrderEntity> queue = new ArrayList<>();
 		
-		// Filter for active orders (PENDING or COOKING)
 		for (OrderEntity order : orderRepository.findAll()) {
-			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.COOKING) {
+			// Only filter out finished orders if includeHistory is FALSE (i.e., the Chef view)
+			if (!includeHistory && (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELED)) {
 				continue;
 			}
 			queue.add(order);
@@ -57,40 +52,7 @@ public class KitchenQueueService {
 		return queue;
 	}
 
-	// get order queue with flexible sorting and KDS display data (timing, category, station)
-	// defaults to sort by estimated prep time, then dish category, then station
-	public List<KdsQueueItemDto> getQueue(OrderSortBy sortBy, SortDirection direction) {
-		LocalDateTime now = LocalDateTime.now();
-		List<KdsQueueItemDto> queue = new ArrayList<>();
-		for (OrderEntity order : orderRepository.findAll()) {
-			if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.COOKING) {
-				continue;
-			}
-			queue.add(toQueueDto(order, now));
-		}
-
-		// apply custom sorting based on sortBy parameter
-		Comparator<KdsQueueItemDto> comparator = switch (sortBy) {
-			case ORDER_TIME -> Comparator.comparing(KdsQueueItemDto::getOrderTime);
-			case ESTIMATED_PREP_TIME -> Comparator.comparing(
-				(KdsQueueItemDto item) -> item.getEstimatedPrepMinutes(),
-				Comparator.nullsLast(Integer::compareTo));
-		};
-
-		if (direction == SortDirection.DESC) {
-			comparator = comparator.reversed();
-		}
-
-		// secondary sort: dish category, then station (for tiebreaking)
-		comparator = comparator
-			.thenComparing((KdsQueueItemDto item) -> item.getPrimaryDishCategory() == null ? "" : item.getPrimaryDishCategory().name())
-			.thenComparing((KdsQueueItemDto item) -> item.getPrimaryStation() == null ? "" : item.getPrimaryStation().name());
-
-		queue.sort(comparator);
-		return queue;
-	}
-
-	// get alerts for orders nearing their deadline based on estimated prep time
+	// get alerts for orders nearing their deadline or overdue
 	public List<KdsAlertDto> getAlerts(int thresholdMinutes) {
 		LocalDateTime now = LocalDateTime.now();
 		List<KdsAlertDto> alerts = new ArrayList<>();
@@ -100,64 +62,30 @@ public class KitchenQueueService {
 				continue;
 			}
 
-			if (isNearDeadline(order, now, thresholdMinutes) && !order.isNearDeadlineNotified()) {
-				order.setNearDeadlineNotified(true);
-				orderRepository.save(order);
-				alerts.add(KdsAlertDto.builder()
-						.type("ORDER_NEAR_DEADLINE")
-						.message("Order is nearing deadline")
-						.orderId(order.getId())
-						.orderItemId(null)
-						.createdAt(now)
-						.build());
-				orderTrackingService.notifyOrderNearDeadline(order);
+			for (OrderItemEntity item : order.getItems()) {
+				if (!isQueueableItem(item)) continue;
+
+				Long remaining = calculateRemainingMinutes(item, order.getOrderTime(), now);
+
+				if (remaining != null && remaining <= thresholdMinutes) {
+					String alertType = remaining < 0 ? "ITEM_OVERDUE" : "ITEM_NEAR_DEADLINE";
+					String alertMsg = remaining < 0 
+							? "Item '" + item.getMenuItem().getName() + "' is OVERDUE!"
+							: "Item '" + item.getMenuItem().getName() + "' (x" + item.getQuantity() + ") is nearing deadline";
+
+					alerts.add(KdsAlertDto.builder()
+							.type(alertType)
+							.message(alertMsg)
+							.orderId(order.getId())
+							.orderItemId(item.getId())
+							.createdAt(now)
+							.build());
+				}
 			}
 		}
 
 		return alerts;
 	}
-
-
-
-	// convert OrderEntity to KdsQueueItemDto for KDS display
-	private KdsQueueItemDto toQueueDto(OrderEntity order, LocalDateTime now) {
-		int estimatedPrep = getOrderEstimatedPrep(order);
-		LocalDateTime start = order.getOrderTime() == null ? now : order.getOrderTime();
-		LocalDateTime deadline = start.plusMinutes(estimatedPrep);
-		DishCategory primaryDishCategory = null;
-		StationType primaryStation = StationType.GENERAL;
-
-		for (OrderItemEntity item : order.getItems()) {
-			if (!isQueueableItem(item)) {
-				continue;
-			}
-
-			if (primaryDishCategory == null && item.getMenuItem() != null) {
-				primaryDishCategory = item.getMenuItem().getDishCategory();
-			}
-
-			if (item.getMenuItem() != null
-					&& item.getMenuItem().getStations() != null
-					&& !item.getMenuItem().getStations().isEmpty()) {
-				primaryStation = item.getMenuItem().getStations().get(0);
-			}
-
-			break;
-		}
-
-		return KdsQueueItemDto.builder()
-				.orderId(order.getId())
-				.orderTime(start)
-				.deadline(deadline)
-				.estimatedPrepMinutes(estimatedPrep)
-				.actualPrepMinutes(order.getActualPrepMinutes())
-				.primaryDishCategory(primaryDishCategory)
-				.primaryStation(primaryStation)
-				.status(order.getStatus())
-				.nearDeadline(isNearDeadline(order, now, 2))
-				.build();
-	}
-
 
 	// calculate the estimated preparation time for an order
 	private Integer getOrderEstimatedPrep(OrderEntity order) {
@@ -183,16 +111,15 @@ public class KitchenQueueService {
 				&& item.getProgressStatus() != OrderItemProgressStatus.COMPLETED;
 	}
 
-	// check if an order is near its deadline based on current time and estimated prep time
-	private boolean isNearDeadline(OrderEntity order, LocalDateTime now, int thresholdMinutes) {
-		if (order.getOrderTime() == null) {
-			return false;
+	// helper method to calculate remaining minutes for an item
+	private Long calculateRemainingMinutes(OrderItemEntity item, LocalDateTime orderTime, LocalDateTime now) {
+		if (orderTime == null || item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
+			return null;
 		}
-		if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELED) {
-			return false;
-		}
-		LocalDateTime deadline = order.getOrderTime().plusMinutes(getOrderEstimatedPrep(order));
-		long remaining = Duration.between(now, deadline).toMinutes();
-		return remaining >= 0 && remaining <= thresholdMinutes;
+		
+		int totalItemPrepTime = item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
+		LocalDateTime itemDeadline = orderTime.plusMinutes(totalItemPrepTime);
+		
+		return Duration.between(now, itemDeadline).toMinutes();
 	}
 }

@@ -20,8 +20,8 @@ public class KDSFacade {
     private final OrderTrackingService orderTrackingService;
 
     // get queue with custom sorting - returns full OrderEntity objects
-    public List<OrderEntity> getQueue(OrderSortBy sortBy, SortDirection direction) {
-        return kitchenQueueService.getOrderQueue(sortBy, direction);
+    public List<OrderEntity> getQueue(OrderSortBy sortBy, SortDirection direction, boolean includeHistory) {
+        return kitchenQueueService.getOrderQueue(sortBy, direction, includeHistory);
     }
 
     public List<KdsAlertDto> getAlerts(int thresholdMinutes) {

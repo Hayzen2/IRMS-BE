@@ -68,36 +68,49 @@ public class KitchenOrderNotificationScheduler {
 		return false;
 	}
 
-	private boolean isNearDeadline(OrderEntity order, LocalDateTime now, int thresholdMinutes) {
-		LocalDateTime orderTime = order.getOrderTime();
-		if (orderTime == null) {
-			return false;
-		}
-		LocalDateTime deadline = orderTime.plusMinutes(getOrderEstimatedPrep(order));
-		long remaining = Duration.between(now, deadline).toMinutes();
-		return remaining >= 0 && remaining <= thresholdMinutes;
-	}
-
 	private boolean isOverdue(OrderEntity order, LocalDateTime now) {
-		LocalDateTime orderTime = order.getOrderTime();
-		if (orderTime == null) {
-			return false;
+		for (OrderItemEntity item : order.getItems()) {
+			if (!isQueueableItem(item)) continue;
+
+			Long remaining = calculateRemainingMinutes(item, order.getOrderTime(), now);
+			
+			// If remaining is strictly less than 0, the item is overdue
+			if (remaining != null && remaining < 0) {
+				return true;
+			}
 		}
-		LocalDateTime deadline = orderTime.plusMinutes(getOrderEstimatedPrep(order));
-		return now.isAfter(deadline);
+		return false;
 	}
 
-	private int getOrderEstimatedPrep(OrderEntity order) {
-		int total = 0;
+	private boolean isNearDeadline(OrderEntity order, LocalDateTime now, int thresholdMinutes) {
 		for (OrderItemEntity item : order.getItems()) {
-			if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED) {
-				continue;
+			if (!isQueueableItem(item)) continue;
+			
+			Long remaining = calculateRemainingMinutes(item, order.getOrderTime(), now);
+			
+			// We check >= 0 here because isOverdue (above) handles the < 0 cases
+			if (remaining != null && remaining >= 0 && remaining <= thresholdMinutes) {
+				return true;
 			}
-			if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
-				continue;
-			}
-			total += item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
 		}
-		return total;
+		return false;
+	}
+
+	// check if an order item should be included in the time calculations
+	private boolean isQueueableItem(OrderItemEntity item) {
+		return item.getProgressStatus() != OrderItemProgressStatus.CANCELED
+				&& item.getProgressStatus() != OrderItemProgressStatus.COMPLETED;
+	}
+
+	// helper method to calculate remaining minutes for an item
+	private Long calculateRemainingMinutes(OrderItemEntity item, LocalDateTime orderTime, LocalDateTime now) {
+		if (orderTime == null || item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
+			return null;
+		}
+		
+		int totalItemPrepTime = item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
+		LocalDateTime itemDeadline = orderTime.plusMinutes(totalItemPrepTime);
+		
+		return Duration.between(now, itemDeadline).toMinutes();
 	}
 }

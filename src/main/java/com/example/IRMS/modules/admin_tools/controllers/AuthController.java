@@ -30,16 +30,21 @@ public class AuthController {
 	@PostMapping("/login")
 	public ResponseEntity<AuthTokenDTO> login(@Valid @RequestBody LoginRequestDTO request, HttpServletResponse response) {
 		try {
-			AuthTokenDTO token = authService.login(request.email(), request.password());
+			AuthTokenDTO authData = authService.login(request.email(), request.password());
 			// Set JWT in HttpOnly cookie
 			// sameSite=Lax for basic CSRF protection, Max-Age=86400 (1 day) 
 			// sameSite=Lax stops the cookie from being sent on cross-site requests
 			// XSS protection means JavaScript cannot read HttpOnly cookies, but they will still be sent on same-site requests
 			// CSRF protection means cookie will not be sent on cross-site requests, they will only be sent on same-site requests
 			response.addHeader("Set-Cookie", 
-				"access_token=" + token.getAccessToken() + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=" + (86400) + "; ");
+				"access_token=" + authData.getAccessToken() + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=" + (86400) + "; ");
+
 			// Return user profile only (no token in body)
-			return ResponseEntity.ok(token);
+			authData.setAccessToken(null); 
+      authData.setTokenType(null);
+
+			// 3. Return only the safe user profile (userId, email, role)
+			return ResponseEntity.ok(authData);
 		} catch (BadCredentialsException ex) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 				.body(new AuthTokenDTO(null, null, null, null, null));

@@ -182,6 +182,7 @@ public class OrderTrackingService {
 			order.setStatus(OrderStatus.CANCELED);
 		}
 		OrderEntity saved = orderRepository.save(order);
+    notifyOrderUpdated(saved);
 		if (saved.getStatus() == OrderStatus.CANCELED) {
 			notifyOrderCanceled(saved);
 		}
@@ -212,6 +213,7 @@ public class OrderTrackingService {
 		}
 
 		OrderEntity saved = orderRepository.save(order);
+    notifyOrderUpdated(saved);
 		if (saved.getStatus() == OrderStatus.COMPLETED) {
 			notifyOrderCompletion(saved);
 		}
