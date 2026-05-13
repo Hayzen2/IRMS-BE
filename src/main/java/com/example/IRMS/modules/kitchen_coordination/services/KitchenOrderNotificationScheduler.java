@@ -69,22 +69,53 @@ public class KitchenOrderNotificationScheduler {
 	}
 
 	private boolean isNearDeadline(OrderEntity order, LocalDateTime now, int thresholdMinutes) {
-		LocalDateTime orderTime = order.getOrderTime();
-		if (orderTime == null) {
+		if (order.getOrderTime() == null) {
 			return false;
 		}
-		LocalDateTime deadline = orderTime.plusMinutes(getOrderEstimatedPrep(order));
-		long remaining = Duration.between(now, deadline).toMinutes();
-		return remaining >= 0 && remaining <= thresholdMinutes;
+		
+		for (OrderItemEntity item : order.getItems()) {
+			if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED || 
+				item.getProgressStatus() == OrderItemProgressStatus.COMPLETED) {
+				continue;
+			}
+			if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
+				continue;
+			}
+			
+			int totalItemPrepTime = item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
+			LocalDateTime itemDeadline = order.getOrderTime().plusMinutes(totalItemPrepTime);
+			
+			long remaining = Duration.between(now, itemDeadline).toMinutes();
+			
+			if (remaining >= 0 && remaining <= thresholdMinutes) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private boolean isOverdue(OrderEntity order, LocalDateTime now) {
-		LocalDateTime orderTime = order.getOrderTime();
-		if (orderTime == null) {
+		if (order.getOrderTime() == null) {
 			return false;
 		}
-		LocalDateTime deadline = orderTime.plusMinutes(getOrderEstimatedPrep(order));
-		return now.isAfter(deadline);
+		
+		for (OrderItemEntity item : order.getItems()) {
+			if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED || 
+				item.getProgressStatus() == OrderItemProgressStatus.COMPLETED) {
+				continue;
+			}
+			if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
+				continue;
+			}
+			
+			int totalItemPrepTime = item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
+			LocalDateTime itemDeadline = order.getOrderTime().plusMinutes(totalItemPrepTime);
+			
+			if (now.isAfter(itemDeadline)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private int getOrderEstimatedPrep(OrderEntity order) {

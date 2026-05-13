@@ -100,17 +100,25 @@ public class KitchenQueueService {
 				continue;
 			}
 
-			if (isNearDeadline(order, now, thresholdMinutes) && !order.isNearDeadlineNotified()) {
-				order.setNearDeadlineNotified(true);
-				orderRepository.save(order);
-				alerts.add(KdsAlertDto.builder()
-						.type("ORDER_NEAR_DEADLINE")
-						.message("Order is nearing deadline")
-						.orderId(order.getId())
-						.orderItemId(null)
-						.createdAt(now)
-						.build());
-				orderTrackingService.notifyOrderNearDeadline(order);
+			for (OrderItemEntity item : order.getItems()) {
+				if (!isQueueableItem(item)) continue;
+				if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) continue;
+
+				int totalItemPrepTime = item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
+				LocalDateTime itemDeadline = order.getOrderTime().plusMinutes(totalItemPrepTime);
+				
+				long remaining = Duration.between(now, itemDeadline).toMinutes();
+
+				if (remaining >= 0 && remaining <= thresholdMinutes) {
+					// We STILL generate the DTO so the frontend can see the alert immediately...
+					alerts.add(KdsAlertDto.builder()
+							.type("ITEM_NEAR_DEADLINE")
+							.message("Item '" + item.getMenuItem().getName() + "' (x" + item.getQuantity() + ") is nearing deadline")
+							.orderId(order.getId())
+							.orderItemId(item.getId())
+							.createdAt(now)
+							.build());
+				}
 			}
 		}
 
