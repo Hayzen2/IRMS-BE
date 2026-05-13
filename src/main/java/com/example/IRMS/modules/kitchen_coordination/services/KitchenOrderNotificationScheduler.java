@@ -68,65 +68,58 @@ public class KitchenOrderNotificationScheduler {
 		return false;
 	}
 
-	private boolean isNearDeadline(OrderEntity order, LocalDateTime now, int thresholdMinutes) {
-		if (order.getOrderTime() == null) {
-			return false;
-		}
-		
+	private boolean isOverdue(OrderEntity order, LocalDateTime now) {
 		for (OrderItemEntity item : order.getItems()) {
-			if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED || 
-				item.getProgressStatus() == OrderItemProgressStatus.COMPLETED) {
-				continue;
-			}
-			if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
-				continue;
-			}
+			if (!isQueueableItem(item)) continue;
+
+			Long remaining = calculateRemainingMinutes(item, order.getOrderTime(), now);
 			
-			int totalItemPrepTime = item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
-			LocalDateTime itemDeadline = order.getOrderTime().plusMinutes(totalItemPrepTime);
-			
-			long remaining = Duration.between(now, itemDeadline).toMinutes();
-			
-			if (remaining >= 0 && remaining <= thresholdMinutes) {
+			// If remaining is strictly less than 0, the item is overdue
+			if (remaining != null && remaining < 0) {
 				return true;
 			}
 		}
 		return false;
 	}
 
-	private boolean isOverdue(OrderEntity order, LocalDateTime now) {
-		if (order.getOrderTime() == null) {
-			return false;
-		}
-		
+	private boolean isNearDeadline(OrderEntity order, LocalDateTime now, int thresholdMinutes) {
 		for (OrderItemEntity item : order.getItems()) {
-			if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED || 
-				item.getProgressStatus() == OrderItemProgressStatus.COMPLETED) {
-				continue;
-			}
-			if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
-				continue;
-			}
+			if (!isQueueableItem(item)) continue;
 			
-			int totalItemPrepTime = item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
-			LocalDateTime itemDeadline = order.getOrderTime().plusMinutes(totalItemPrepTime);
+			Long remaining = calculateRemainingMinutes(item, order.getOrderTime(), now);
 			
-			if (now.isAfter(itemDeadline)) {
+			// We check >= 0 here because isOverdue (above) handles the < 0 cases
+			if (remaining != null && remaining >= 0 && remaining <= thresholdMinutes) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	// check if an order item should be included in the time calculations
+	private boolean isQueueableItem(OrderItemEntity item) {
+		return item.getProgressStatus() != OrderItemProgressStatus.CANCELED
+				&& item.getProgressStatus() != OrderItemProgressStatus.COMPLETED;
+	}
+
+	// helper method to calculate remaining minutes for an item
+	private Long calculateRemainingMinutes(OrderItemEntity item, LocalDateTime orderTime, LocalDateTime now) {
+		if (orderTime == null || item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
+			return null;
+		}
+		
+		int totalItemPrepTime = item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
+		LocalDateTime itemDeadline = orderTime.plusMinutes(totalItemPrepTime);
+		
+		return Duration.between(now, itemDeadline).toMinutes();
 	}
 
 	private int getOrderEstimatedPrep(OrderEntity order) {
 		int total = 0;
 		for (OrderItemEntity item : order.getItems()) {
-			if (item.getProgressStatus() == OrderItemProgressStatus.CANCELED) {
-				continue;
-			}
-			if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) {
-				continue;
-			}
+			if (!isQueueableItem(item)) continue;
+			if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) continue;
+			
 			total += item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
 		}
 		return total;

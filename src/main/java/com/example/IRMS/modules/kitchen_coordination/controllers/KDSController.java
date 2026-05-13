@@ -39,8 +39,9 @@ public class KDSController {
 	@Transactional(readOnly = true)
 	public ResponseEntity<ApiResponse<List<OrderResponseDto>>> getQueue( 
 			@RequestParam(defaultValue = "ORDER_TIME") OrderSortBy sortBy,
-			@RequestParam(defaultValue = "DESC") SortDirection direction) {
-		List<OrderEntity> orders = kdsFacade.getQueue(sortBy, direction);
+			@RequestParam(defaultValue = "DESC") SortDirection direction,
+      @RequestParam(defaultValue = "false") boolean history) {
+		List<OrderEntity> orders = kdsFacade.getQueue(sortBy, direction, history);
 		List<OrderResponseDto> dtos = orders.stream()
 			.map(OrderResponseDto::fromEntity)
 			.collect(Collectors.toList());
