@@ -24,8 +24,14 @@ public class OrderItemResponseDto {
     @JsonProperty("quantity")
     private Integer quantity;
 
+    @JsonProperty("allergyNotes")
+    private String allergyNotes;
+
     @JsonProperty("specialInstructions")
     private String specialInstructions;
+
+    @JsonProperty("customizations")
+    private String customizations;
 
     @JsonProperty("totalPrice")
     private Double totalPrice;
@@ -53,7 +59,9 @@ public class OrderItemResponseDto {
                 .menuItemId(entity.getMenuItem() != null ? entity.getMenuItem().getId() : null)
                 .name(entity.getMenuItem() != null ? entity.getMenuItem().getName() : "")
                 .quantity(entity.getQuantity())
+                .allergyNotes(entity.getAllergyNotes())
                 .specialInstructions(entity.getSpecialInstructions())
+                .customizations(entity.getCustomization())
                 .totalPrice(totalPrice)
                 .status(statusStr)
                 .menuItem(entity.getMenuItem())

@@ -43,11 +43,11 @@ public class AuthService {
 		claims.put("role", role);
 		claims.put("roles", java.util.List.of(role));
 
-		String accessToken = jwtProvider.generateAccessToken(claims);
+		// String accessToken = jwtProvider.generateAccessToken(claims);
 
 		return AuthTokenDTO.builder()
-				.accessToken(accessToken)
-				.tokenType("Bearer")
+				.accessToken(null) // Access token is not returned to frontend; only used for WebSocket authentication via ticket
+				.tokenType(null)
 				.userId(String.valueOf(user.getId()))
 				.email(user.getEmail())
 				.role(role)

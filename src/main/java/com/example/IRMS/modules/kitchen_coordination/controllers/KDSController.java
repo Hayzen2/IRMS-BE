@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.CookieValue;
 
 import com.example.IRMS.modules.digital_ordering.models.OrderEntity;
 import com.example.IRMS.modules.kitchen_coordination.dtos.KdsAlertDto;
@@ -20,6 +21,7 @@ import com.example.IRMS.modules.kitchen_coordination.enums.OrderSortBy;
 import com.example.IRMS.modules.kitchen_coordination.enums.SortDirection;
 import com.example.IRMS.modules.kitchen_coordination.facades.KDSFacade;
 import com.example.IRMS.utils.ApiResponse;
+import com.example.IRMS.config.websocket.WebSocketTicketService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class KDSController {
 	private final KDSFacade kdsFacade;
+  private final WebSocketTicketService ticketService;
 
 	@Operation(summary = "Get KDS order queue", description = "Returns active orders in the kitchen queue with all details including items")
 	@GetMapping("/queue")
@@ -119,4 +122,18 @@ public class KDSController {
 			return ResponseEntity.status(400).body(new ApiResponse<>(400, ex.getMessage(), null));
 		}
 	}
+
+  @Operation(summary = "Get WebSocket Ticket", description = "Generates a one-time use ticket for STOMP auth")
+  @GetMapping("/ws-ticket")
+  @PreAuthorize("hasAnyAuthority('PERM_VIEW_KDS')")
+  public ResponseEntity<ApiResponse<String>> getWsTicket(
+      @CookieValue(name = "access_token", required = false) String token) {
+      
+    if (token == null) {
+      return ResponseEntity.status(401).body(new ApiResponse<>(401, "No cookie found", null));
+    }
+    
+    String ticket = ticketService.generateTicket(token);
+    return ResponseEntity.ok(new ApiResponse<>(200, "Ticket generated", ticket));
+  }
 }

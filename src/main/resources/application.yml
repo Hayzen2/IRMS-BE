@@ -27,7 +27,7 @@ spring:
   jpa:
     defer-datasource-initialization: true #Ensures DB is ready before JPA runs
     hibernate:
-      ddl-auto: update #auto create and update table
+      ddl-auto: create-drop #auto create and update table
     show-sql: true #Logs SQL queries to console
 jwt:
   secret: ${JWT_SECRET}

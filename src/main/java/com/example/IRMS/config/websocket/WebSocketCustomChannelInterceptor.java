@@ -20,56 +20,40 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class WebSocketCustomChannelInterceptor implements ChannelInterceptor {
-    private final JwtProvider jwtProvider;
-    
-    // Intercept incoming WebSocket messages to authenticate users based on JWT tokens
-    @Override
-    public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+  private final JwtProvider jwtProvider;
+  private final WebSocketTicketService ticketService;
+  
+  // Intercept incoming WebSocket messages to authenticate users based on JWT tokens
+  @Override
+  public Message<?> preSend(Message<?> message, MessageChannel channel) {
+    StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-        if (accessor == null) {
-            return message;
+    if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+      
+      // 1. Grab the ticket from the STOMP header
+      String ticket = accessor.getFirstNativeHeader("ticket");
+
+      if (ticket != null) {
+        // 2. Consume the ticket to get the real JWT token
+        String token = ticketService.consumeTicket(ticket);
+
+        if (token != null && jwtProvider.validateToken(token)) {
+          String userId = jwtProvider.getUserIdFromToken(token);
+          String role = jwtProvider.getRoleFromToken(token);
+
+          UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+              userId, null, List.of(() -> role)
+          );
+          accessor.setUser(authentication);
+          
+          log.info("WebSocket CONNECT successful using Ticket! User: {}", userId);
+          return message;
         }
+      }
 
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            String token = null;
-            
-            // Try to get token from cookie first
-            String cookieHeader = accessor.getFirstNativeHeader("Cookie");
-            if (cookieHeader != null) {
-                for (String cookie : cookieHeader.split(";")) {
-                    String trimmed = cookie.trim();
-                    if (trimmed.startsWith("access_token=")) {
-                        token = trimmed.substring("access_token=".length());
-                        break;
-                    }
-                }
-            }
-            
-            // Fallback to Bearer header
-            if (token == null) {
-                String authHeader = accessor.getFirstNativeHeader("Authorization");
-                if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                    token = authHeader.substring(7); // Remove "Bearer " prefix
-                }
-            }
-            
-            if (token != null && jwtProvider.validateToken(token)) {
-                String userId = jwtProvider.getUserIdFromToken(token);
-                String role = jwtProvider.getRoleFromToken(token);
-                
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userId, null, List.of(() -> role) // Create a simple GrantedAuthority based on the role
-                );
-                accessor.setUser(authentication); // This sets Principal on the STOMP session (persisted for all subsequent frames)
-                log.info("User authenticated and set in accessor: {}", userId);
-
-                log.info("WebSocket CONNECT received, user authenticated: {}, role: {}", userId, role);
-                return message;
-            }
-            log.warn("Rejected WebSocket CONNECT: missing or invalid JWT token");
-            throw new MessageDeliveryException("WebSocket authentication failed");
-        }  
-        return message;
+      log.warn("Rejected WebSocket CONNECT: missing or invalid Ticket");
+      throw new MessageDeliveryException("WebSocket authentication failed");
     }
+    return message;
+  }
 }
