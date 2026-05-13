@@ -8,15 +8,12 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.example.IRMS.modules.digital_ordering.enums.DishCategory;
 import com.example.IRMS.modules.digital_ordering.enums.OrderItemProgressStatus;
 import com.example.IRMS.modules.digital_ordering.enums.OrderStatus;
-import com.example.IRMS.modules.digital_ordering.enums.StationType;
 import com.example.IRMS.modules.digital_ordering.models.OrderEntity;
 import com.example.IRMS.modules.digital_ordering.models.OrderItemEntity;
 import com.example.IRMS.modules.digital_ordering.repositories.OrderRepository;
 import com.example.IRMS.modules.kitchen_coordination.dtos.KdsAlertDto;
-import com.example.IRMS.modules.kitchen_coordination.dtos.KdsQueueItemDto;
 import com.example.IRMS.modules.kitchen_coordination.enums.OrderSortBy;
 import com.example.IRMS.modules.kitchen_coordination.enums.SortDirection;
 
@@ -90,45 +87,6 @@ public class KitchenQueueService {
 		return alerts;
 	}
 
-	// convert OrderEntity to KdsQueueItemDto for KDS display
-	private KdsQueueItemDto toQueueDto(OrderEntity order, LocalDateTime now) {
-		int estimatedPrep = getOrderEstimatedPrep(order);
-		LocalDateTime start = order.getOrderTime() == null ? now : order.getOrderTime();
-		LocalDateTime deadline = start.plusMinutes(estimatedPrep);
-		DishCategory primaryDishCategory = null;
-		StationType primaryStation = StationType.GENERAL;
-
-		for (OrderItemEntity item : order.getItems()) {
-			if (!isQueueableItem(item)) {
-				continue;
-			}
-
-			if (primaryDishCategory == null && item.getMenuItem() != null) {
-				primaryDishCategory = item.getMenuItem().getDishCategory();
-			}
-
-			if (item.getMenuItem() != null
-					&& item.getMenuItem().getStations() != null
-					&& !item.getMenuItem().getStations().isEmpty()) {
-				primaryStation = item.getMenuItem().getStations().get(0);
-			}
-
-			break;
-		}
-
-		return KdsQueueItemDto.builder()
-				.orderId(order.getId())
-				.orderTime(start)
-				.deadline(deadline)
-				.estimatedPrepMinutes(estimatedPrep)
-				.actualPrepMinutes(order.getActualPrepMinutes())
-				.primaryDishCategory(primaryDishCategory)
-				.primaryStation(primaryStation)
-				.status(order.getStatus())
-				.nearDeadline(isNearDeadline(order, now, 2))
-				.build();
-	}
-
 	// calculate the estimated preparation time for an order
 	private Integer getOrderEstimatedPrep(OrderEntity order) {
 		int total = 0;
@@ -151,22 +109,6 @@ public class KitchenQueueService {
 	private boolean isQueueableItem(OrderItemEntity item) {
 		return item.getProgressStatus() != OrderItemProgressStatus.CANCELED
 				&& item.getProgressStatus() != OrderItemProgressStatus.COMPLETED;
-	}
-
-	// check if an order is near its deadline or overdue
-	private boolean isNearDeadline(OrderEntity order, LocalDateTime now, int thresholdMinutes) {
-		for (OrderItemEntity item : order.getItems()) {
-			if (!isQueueableItem(item)) {
-				continue;
-			}
-			
-			Long remaining = calculateRemainingMinutes(item, order.getOrderTime(), now);
-			
-			if (remaining != null && remaining <= thresholdMinutes) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	// helper method to calculate remaining minutes for an item

@@ -113,15 +113,4 @@ public class KitchenOrderNotificationScheduler {
 		
 		return Duration.between(now, itemDeadline).toMinutes();
 	}
-
-	private int getOrderEstimatedPrep(OrderEntity order) {
-		int total = 0;
-		for (OrderItemEntity item : order.getItems()) {
-			if (!isQueueableItem(item)) continue;
-			if (item.getMenuItem() == null || item.getMenuItem().getEstimatedPrepMinutes() == null) continue;
-			
-			total += item.getMenuItem().getEstimatedPrepMinutes() * Math.max(item.getQuantity(), 1);
-		}
-		return total;
-	}
 }
